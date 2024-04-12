@@ -80,7 +80,7 @@ void Hypergraph::FMAlgorithm() {
                         for(auto& node : buckets_A[i]){
                             if(!node->locked && node->G >= 0){
                                 best = node;
-                                switchgroup(node);
+                                //switchgroup(node);
                                 improved = true;
                                 break;
                             }
@@ -94,7 +94,7 @@ void Hypergraph::FMAlgorithm() {
                         for(auto& node : buckets_B[i]){
                             if(!node->locked && node->G >= 0){
                                 best = node;
-                                switchgroup(node);
+                                //switchgroup(node);
                                 improved = true;
                                 break;
                             }
@@ -120,7 +120,7 @@ void Hypergraph::FMAlgorithm() {
                             for(auto& node : buckets_A[i]){
                                 if(!node->locked && node->G >= 0){
                                     best = node;
-                                    switchgroup(node);
+                                    //switchgroup(node);
                                     improved = true;
                                     break;
                                 }
@@ -134,7 +134,7 @@ void Hypergraph::FMAlgorithm() {
                             for(auto& node : buckets_B[i]){
                                 if(!node->locked && node->G >= 0){
                                     best = node;
-                                    switchgroup(node);
+                                    //switchgroup(node);
                                     improved = true;
                                     break;
                                 }
@@ -145,15 +145,26 @@ void Hypergraph::FMAlgorithm() {
                 }
             }
             if(best != nullptr){
-                //std::cout << "best is node " << best->id << endl;
                 for(auto* edge : best->connectedEdges){
-                    for(auto* node : edge->connectedNodes ){
-                        int x = node->G;
-                        node->calculateGain();
-                        int y = x - node->G;
-                        updateGain(node, x, y);
+                    //check F(n) and T(n) for all connected edges
+                    if(edge->group_count[1 - best->group] == 0){
+                        for(auto* node : edge->connectedNodes ){
+                            if(node->id != best->id && !node->locked){
+                                updateGain(node,1);
+                            }
+                        }
+                    }else if(edge->group_count[1 - best->group] == 1){
+                        for(auto* node : edge->connectedNodes ){
+                            if(node->group != best->group && !node->locked){
+                                updateGain(node,-1);
+                                break;
+                            }
+                        }
                     }
+                    edge->group_count[best->group]--;
+                    edge->group_count[1 - best->group]++;
                 }
+                switchgroup(best);
                 //show_Buckets();
             }
             else{
@@ -164,12 +175,11 @@ void Hypergraph::FMAlgorithm() {
     
 }
 
-void Hypergraph::updateGain(Node* node, int origin_Gain, int deltaGain){
-    int newGain = node->G;
+void Hypergraph::updateGain(Node* node, int deltaGain){
     vector<list<Node*>>& curr_bucketlist = (node->group) ? buckets_B : buckets_A;
-    int curr_idx = offset + origin_Gain;
+    int curr_idx = offset + node->G;
     curr_bucketlist[curr_idx].remove(node);
-    node->G = newGain;
+    node->G = node->G + deltaGain;
     int new_idx = offset + node->G;
     if (new_idx >= curr_bucketlist.size()) {
         curr_bucketlist.resize(new_idx + 1);
