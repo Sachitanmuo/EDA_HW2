@@ -37,7 +37,7 @@ public:
         for(auto* edge : connectedEdges){
             bool same = true;
             bool diff = true;
-            if(1){
+            if(!edge -> counted){
                 for(auto* node : edge->connectedNodes){
                     edge->group_count[node->group]++;
                     //not all the nodes in the same group
@@ -47,8 +47,12 @@ public:
                     }
                 edge->counted = true;
             }else{
-                if(edge->group_count[group]) same = false;
-                if(edge->group_count[group] != 1) diff = false;
+                for(auto* node : edge->connectedNodes){
+                    //not all the nodes in the same group
+                    if(group != node->group) same = false;
+                    //node is not the only one that belongs to another group
+                    if(node->id != id && node->group == group) diff = false;
+                    }
             }
             if(same) TE++;
             if(diff) FS++;

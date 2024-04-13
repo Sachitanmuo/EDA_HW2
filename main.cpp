@@ -5,9 +5,9 @@
 #include "Hypergraph.h"
 using namespace std;
 
-
 int main(int argc, char* argv[]) {
     //initialize parameters
+    fclose(stdout);
     Hypergraph hg;
     hg.readFile(argv[1]);
     hg.FMAlgorithm();

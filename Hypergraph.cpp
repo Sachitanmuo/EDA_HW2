@@ -51,8 +51,8 @@ void Hypergraph::readFile(const std::string& filename) {
 void Hypergraph::FMAlgorithm() {
     int half_size = nodes.size()/2;
     for(int i = 0; i < nodes.size();i++){
-        nodes[i].group = i % 2 ? 0 : 1;
-        i % 2 ? ++A : ++B;
+        nodes[i].group = i < half_size ? 0 : 1;
+        i < half_size  ? ++A : ++B;
     }
     for(auto& node : nodes){
             node.calculateGain();
@@ -70,7 +70,7 @@ void Hypergraph::FMAlgorithm() {
         bool improved = true;
         while(improved){
             double ratio = ((double)A) / (A+B);
-            //cout << "current ratio: " << ratio << endl;
+            cout << "current ratio: " << ratio << endl;
             improved = false;
             Node* best = nullptr;
             //calculate Gain first time
@@ -103,7 +103,50 @@ void Hypergraph::FMAlgorithm() {
                     }
                 }
             }else{
-                int a_max, b_max;
+                Node *temp_A = nullptr, *temp_B = nullptr;
+                bool found = false;
+                for(int i = buckets_A.size() - 1; i >= 0; --i){
+                        if(!buckets_A[i].empty()){
+                            for(auto& node : buckets_A[i]){
+                                if(!node->locked && node->G >= 0){
+                                    temp_A = node;
+                                    cout << "temp_A Gain: " << temp_A->G << endl;
+                                    //switchgroup(node);
+                                    found = true;
+                                    break;   
+                                }
+                            }
+                        }
+                    if(found) break;
+                }
+                found = false;
+                for(int i = buckets_B.size() - 1; i >= 0; --i){
+                        if(!buckets_B[i].empty()){
+                            for(auto& node : buckets_B[i]){
+                                if(!node->locked && node->G >= 0){
+                                    temp_B = node;
+                                    cout << "temp_B Gain: " << temp_B->G << endl;
+                                    //switchgroup(node);
+                                    found = true;
+                                    break;
+                                }
+                            }   
+                        }
+                    if(found) break;
+                }
+
+                if(!temp_A && temp_B){
+                    best = temp_B;
+                    improved = true;
+                }else if(!temp_B && temp_A){
+                    best = temp_A;
+                    improved = true;
+                }else if(temp_A && temp_B){
+                    best = temp_A->G > temp_B->G ? temp_A : temp_B;
+                    cout << "Gain: " << temp_A->G << " " << temp_B->G << endl;
+                    improved = true;
+                }
+                /*int a_max, b_max;
                 for(int i = buckets_A.size() - 1; i >= 0; --i){
                     if(!buckets_A[i].empty()){
                         a_max = i;
@@ -114,6 +157,7 @@ void Hypergraph::FMAlgorithm() {
                         b_max = i;
                     }
                 }
+                cout << "A: " << a_max <<" B: " << b_max << endl;
                 if(a_max > b_max){
                     for(int i = buckets_A.size() - 1; i >= 0; --i){
                         if(!buckets_A[i].empty()){
@@ -142,7 +186,7 @@ void Hypergraph::FMAlgorithm() {
                             if(improved) break;
                         }
                     }
-                }
+                }*/
             }
             if(best != nullptr){
                 for(auto* edge : best->connectedEdges){
@@ -151,23 +195,42 @@ void Hypergraph::FMAlgorithm() {
                         for(auto* node : edge->connectedNodes ){
                             if(node->id != best->id && !node->locked){
                                 updateGain(node,1);
+                                cout << "T(n) = 0, node " << node->id << " increased by 1." << endl;
                             }
                         }
                     }else if(edge->group_count[1 - best->group] == 1){
                         for(auto* node : edge->connectedNodes ){
                             if(node->group != best->group && !node->locked){
                                 updateGain(node,-1);
+                                cout << "T(n) = 1, the only node on the other side " << node->id << " decreased by 1." << endl;
                                 break;
                             }
                         }
                     }
+                    cout << "Original F(n) and T(n): " << edge->group_count[best->group] << ", " << edge->group_count[1 - best->group] << endl;
                     edge->group_count[best->group]--;
                     edge->group_count[1 - best->group]++;
+                    if(edge->group_count[best->group] == 0){
+                        for(auto* node : edge->connectedNodes ){
+                            if(node->id != best->id && !node->locked){
+                                updateGain(node,-1);
+                                cout << "F(n) = 0, node " << node->id << " decreased by 1." << endl;
+                            }
+                        }
+                    }else if(edge->group_count[best->group] == 1){
+                        for(auto* node : edge->connectedNodes ){
+                            if(node->group == best->group && node->id != best->id && !node->locked){
+                                updateGain(node,1);
+                                cout << "F(n) = 1, the only node on the other side " << node->id << " increased by 1." << endl;
+                                break;
+                            }
+                        }
+                    }
                 }
                 switchgroup(best);
-                //show_Buckets();
-            }
-            else{
+                show_Buckets();
+                //getchar();
+            }else{
                 cout << "best is nullptr! " << endl;
             }
         }
@@ -201,7 +264,7 @@ void Hypergraph::switchgroup(Node* node){
         ++A;
         --B;
     }
-    //cout << "switch node " << node->id << " from " << 1 - node->group << " to " << node->group << endl; 
+    cout << "switch node " << node->id << " from " << 1 - node->group << " to " << node->group << endl; 
     //comment it since no need to put it in another bucket while locked.
     //if(curr_idx >= targetBucketList.size()){
     //    targetBucketList.resize(curr_idx + 1);
@@ -213,7 +276,7 @@ void Hypergraph::show_Buckets(){
     cout << "==============show Buckets================= " << endl;
     cout << "Buckets A: " << endl;
     for(int i = buckets_A.size() - 1; i > 0; i--){
-        cout << "Index "<< i - offset << ": ";
+        cout << "Index "<< i << ": ";
         if(i >buckets_A.size() - 6){
             for(auto x : buckets_A[i]){
                 cout << x->id << " ";
@@ -223,7 +286,7 @@ void Hypergraph::show_Buckets(){
     }
     cout << "Buckets B: " << endl;
     for(int i = buckets_B.size() - 1; i > 0; i--){
-        cout << "Index "<< i - offset<< ": ";
+        cout << "Index "<< i  << ": ";
         if(i >buckets_B.size() - 6){
             for(auto x : buckets_B[i]){
                 cout << x->id << " ";
